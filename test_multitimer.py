@@ -1,28 +1,38 @@
 import multitimer
-from time import clock, sleep
+from time import perf_counter, sleep
 from pprint import pprint
 
+
 #%%
-a = []
 def test_func():
-    a.append(clock()-rpt.starttime)
+    raw_times.append(perf_counter() - rpt.starttime)
 
 
-rpt = multitimer.RepeatingTimer(interval=.05, ontimeout=test_func, count=10)
+raw_times = []
+interval = 0.1
+rpt = multitimer.RepeatingTimer(interval=interval, ontimeout=test_func, count=10)
 rpt.start()
 
 sleep(1.5)
 
-pprint(a)
+a0 = raw_times[0]
+intervals = [t - a0 for t in raw_times]
+offsets = [t % interval for t in intervals]
+
+print('Intervals:')
+pprint(intervals)
+
+print('\nOffsets from ideal intervals:')
+pprint(offsets)
 
 
 #%%
 def output_func(output):
-    print('{.3f}: {}'.format(clock()-rpt.starttime, output))
+    print('{:.3f}: {}'.format(perf_counter()-rpt.starttime, output))
 
 
 output_dict = {'output': 'original'}
-rpt = multitimer.RepeatingTimer(interval=1, ontimeout=output_func, params=output_dict, count=5, runonstart=False)
+rpt = multitimer.RepeatingTimer(interval=1, function=output_func, kwargs=output_dict, count=5, runonstart=False)
 rpt.start()
 
 sleep(2.5)
@@ -31,31 +41,32 @@ output_dict['output'] = 'modified'
 #%%
 sleep(3)
 
+
 #%%
-a = []
 def test_func():
-    a.append(clock()-rpt._timer.starttime)
+    raw_times.append(perf_counter() - rpt.starttime)
 
 
-rpt = multitimer.MultiTimer(interval=.05, ontimeout=test_func, count=10)
+raw_times = []
+rpt = multitimer.MultiTimer(interval=.05, function=test_func, count=10)
 rpt.start()
 sleep(1)
-pprint(a)
+pprint(raw_times)
 
 print('\n')
-a = []
+raw_times = []
 rpt.start()
 sleep(1)
-pprint(a)
+pprint(raw_times)
 
 
 #%%
 def output_func(output):
-    print(f'{time.clock()-rpt._timer.starttime:.3f}: {output}')
+    print(f'{perf_counter()-rpt.starttime:.3f}: {output}')
 
 
 output_dict = {'output': 'original'}
-rpt = multitimer.MultiTimer(interval=1, ontimeout=output_func, params=output_dict, count=5, runonstart=True)
+rpt = multitimer.MultiTimer(interval=1, function=output_func, kwargs=output_dict, count=5, runonstart=True)
 rpt.start()
 
 sleep(2.5)
@@ -70,18 +81,16 @@ sleep(2.5)
 output_dict['output'] = 'modified yet again'
 
 
-
-
 #%%
 def output_func(output):
-    print(f'{clock()-rpt._timer.starttime:.3f}: {output}')
+    print(f'{perf_counter()-rpt.starttime:.3f}: {output}')
 
 
 output_dict = {'output': 'original'}
-rpt = multitimer.MultiTimer(interval=1, ontimeout=output_func, params=output_dict, count=8, runonstart=True)
+rpt = multitimer.MultiTimer(interval=1, function=output_func, kwargs=output_dict, count=8, runonstart=True)
 rpt.start()
 
 sleep(2.5)
 output_dict['output'] = 'modified'
 sleep(1)
-rpt.start()
+rpt.start()  # should re-start the MultiTimer

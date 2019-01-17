@@ -1,14 +1,56 @@
 from threading import Thread, Event
-from time import clock
+from time import perf_counter
+import warnings
 
 
 class RepeatingTimer(Thread):
-    """Start this timer by calling RepeatingTimer.start()"""
-    def __init__(self, interval, ontimeout, params=None, count=-1, runonstart=True):
+    """Similar to threading.Timer, but allows the timer to repeat multiple times.  However,
+    since we are still subclassing threading.Thread, the .start() method can only be called
+    once.  If you need to stop and restart a repeating timer, use MultiTimer instead.
+
+    This class creates a timer that will run _function_ with arguments _args_ and keyword
+    arguments _kwargs_, after _interval_ seconds have passed, a total of _count_ times.
+
+    If _runonstart_==True, then _function_ will be called immediately when .start() is called.
+
+    If args is None (the default) then an empty list will be used. If kwargs is None (the
+    default) then an empty dict will be used.
+
+    If _count_ == -1 (the default), the timer will repeat indefinitely, or until .stop()
+    is called.
+
+    Start this timer by calling RepeatingTimer.start().  After starting the timer, calling
+    .stop() will terminate the timer's loop and prevent any further calls to function().
+    Note that is function() it is currently in the middle of running, it will finish the
+    current iteration and not be interrupted.
+
+    _ontimeout_ and _params_ are deprecated in 0.2, and replaced by _function_, _args_
+    and _kwargs_, to match the threading.Timer API.
+    """
+
+    def __init__(self, interval, function=None, args=None, kwargs=None, count=-1, runonstart=True,
+                 ontimeout=None, params=None):
         Thread.__init__(self)
-        self.dt = interval
-        self.ontimeout = ontimeout
-        self.params = params
+        if count == 0:
+            raise ValueError('count must be -1 or greater than 1, not zero.')
+        if function is None and ontimeout is None:
+            raise ValueError('function or ontimeout must be specified (and ontimeout is deprecated since'
+                             'multitimer v0.2)')
+        if ontimeout is not None:
+            warnings.warn("'ontimeout' is deprecated since multitimer v0.2.  Use 'function' instead.",
+                          DeprecationWarning)
+            function = ontimeout
+        if params is not None:
+            warnings.warn("'params' is deprecated since multitimer v0.2.  Use 'args' and 'kwargs' instead.",
+                          DeprecationWarning)
+            kwargs = params
+
+        self.interval = interval
+        self.function = function
+
+        self.args = args if args is not None else []
+        self.kwargs = kwargs if kwargs is not None else {}
+
         self.count = count
         self.counter = 0
         self.stopevent = Event()
@@ -17,48 +59,100 @@ class RepeatingTimer(Thread):
         self._isfirst = True
 
     def run(self):
-        self.starttime = clock()
+        """This method gets called by .start(), don't call this method yourself."""
+        self.starttime = perf_counter()
 
         while True:
+            # Skip this if it's the first time through and self.runonstart == False
             if not (self._isfirst and not self.runonstart):
                 # print(f'first: {self._isfirst}, onstart: {self.runonstart}')
-                if self.params is None:
-                    self.ontimeout()
-                else:
-                    self.ontimeout(**self.params)
+                self.function(*self.args, **self.kwargs)
                 self.counter += 1
-                if (self.count > 0) and (self.counter >= self.count):
+                # If count == -1, we will run indefinitely
+                if (self.count >= 1) and (self.counter >= self.count):
                     self.stopevent.set()
 
+            # set self._isfirst to False once we've completed the first iteration
             if self._isfirst:
                 self._isfirst = False
 
-            if self.stopevent.wait(self.dt - (clock() - self.starttime) % self.dt):
+            # Event.wait() returns False when the event times out, so the only way this
+            # statement evalutes to True is if stopevent gets set (stopevent.set() is called).
+            # We use the call to perf_counter() to adjust the timeout value to account for the
+            # time taken to run self.function() each iteration.
+            # Because we are taking (time since start) % interval, we will skip time intervals that
+            # we've missed, and run on the next interval.
+            if self.stopevent.wait(self.interval - (perf_counter() - self.starttime) % self.interval):
                 break
 
     def stop(self):
+        """Stop the timer if it hasn't finished yet."""
         self.stopevent.set()
 
 
 class MultiTimer(object):
-    """This timer can be re-started multiple times by calling MultiTimer.start()"""
-    def __init__(self, interval, ontimeout, params=None, count=-1, runonstart=True):
-        self._dt = interval
-        self._ontimeout = ontimeout
-        self._params = params
+    """Similar to threading.Timer, but allows the timer to repeat multiple times.  Additionally,
+    MultiTimer can be started and stopped multiple times (unlike threading.Timer and
+    multimer.RepeatingTimer).
+
+    This class creates a timer that will run _function_ with arguments _args_ and keyword
+    arguments _kwargs_, after _interval_ seconds have passed, a total of _count_ times.
+
+    If _runonstart_==True, then _function_ will be called immediately when .start() is called.
+
+    If args is None (the default) then an empty list will be used. If kwargs is None (the
+    default) then an empty dict will be used.
+
+    If _count_ == -1 (the default), the timer will repeat indefinitely, or until .stop()
+    is called.
+
+    Start this timer by calling .start().  Once started, calling .stop() will terminate the
+    timer's loop and not produce any further calls to function(). Note that if function() is
+    currently in the middle of running, it will finish the current iteration and not be interrupted.
+
+    _ontimeout_ and _params_ are deprecated in 0.2, and replaced by _function_, _args_
+    and _kwargs_, to match the threading.Timer API.
+    """
+
+    def __init__(self, interval, function=None, args=None, kwargs=None, count=-1, runonstart=True,
+                 ontimeout=None, params=None):
+        # First, check for appropriate parameters, issue relevant deprecation warnings.
+        if count == 0:
+            raise ValueError('count must be -1 or greater than 1, not zero.')
+        if function is None and ontimeout is None:
+            raise ValueError('function or ontimeout must be specified (and ontimeout is deprecated since'
+                             'multitimer v0.2)')
+        if ontimeout is not None:
+            warnings.warn("'ontimeout' is deprecated since multitimer v0.2.  Use 'function' instead.",
+                          DeprecationWarning)
+            function = ontimeout
+        if params is not None:
+            warnings.warn("'params' is deprecated since multitimer v0.2.  Use 'args' and 'kwargs' instead.",
+                          DeprecationWarning)
+            kwargs = params
+
+        # Store parameters internally
+        self._interval = interval
+        self._function = function
+        self._args = args
+        self._kwargs = kwargs
         self._count = count
         self._runonstart = runonstart
 
+        # Create the empty _timer reference, which then gets initialized when the .start() method is called.
         self._timer = None
 
     def start(self):
         try:
+            # If .start() is called without previously stopping the MultiTimer, we need to stop it first.
             self._timer.stop()
         except AttributeError:
+            # This error will get raised the first time through, as we haven't created the first
+            # RepeatingTimer yet.
             pass
 
-        self._timer = RepeatingTimer(interval=self._dt, ontimeout=self._ontimeout,
-                                     params=self._params, count=self._count,
+        self._timer = RepeatingTimer(interval=self._interval, function=self._function,
+                                     kwargs=self._kwargs, count=self._count,
                                      runonstart=self._runonstart)
         self._timer.start()
 
@@ -66,38 +160,82 @@ class MultiTimer(object):
         self._timer.stop()
 
     @property
-    def dt(self):
-        return self._dt
+    def interval(self):
+        return self._interval
 
-    @dt.setter
-    def dt(self, value):
-        self._dt = value
+    @interval.setter
+    def interval(self, value):
+        self._interval = value
         try:
-            self._timer.dt = value
+            self._timer.interval = value
         except AttributeError:
             pass
 
     @property
     def ontimeout(self):
-        return self._ontimeout
+        warnings.warn("'ontimeout' is deprecated since MultiTimer v0.2.  Use 'function' instead.",
+                      DeprecationWarning)
+        return self._function
 
     @ontimeout.setter
     def ontimeout(self, value):
-        self._ontimeout = value
+        warnings.warn("'ontimeout' is deprecated since MultiTimer v0.2.  Use 'function' instead.",
+                      DeprecationWarning)
+        self._function = value
         try:
-            self._timer.ontimeout = value
+            self._timer.function = value
+        except AttributeError:
+            pass
+
+    @property
+    def function(self):
+        return self._function
+
+    @function.setter
+    def function(self, value):
+        self._function = value
+        try:
+            self._timer.function = value
         except AttributeError:
             pass
 
     @property
     def params(self):
-        return self._params
+        warnings.warn("'params' is deprecated since MultiTimer v0.2.  Use 'args' and 'kwargs' instead.",
+                      DeprecationWarning)
+        return self._kwargs
 
     @params.setter
     def params(self, value):
-        self._params = value
+        warnings.warn("'params' is deprecated since MultiTimer v0.2.  Use 'args' and 'kwargs' instead.",
+                      DeprecationWarning)
+        self._kwargs = value
         try:
             self._timer.params = value
+        except AttributeError:
+            pass
+
+    @property
+    def args(self):
+        return self._args
+
+    @args.setter
+    def args(self, value):
+        self._args = value
+        try:
+            self._timer.args = value
+        except AttributeError:
+            pass
+
+    @property
+    def kwargs(self):
+        return self._kwargs
+
+    @kwargs.setter
+    def kwargs(self, value):
+        self._kwargs = value
+        try:
+            self._timer.kwargs = value
         except AttributeError:
             pass
 
@@ -132,6 +270,9 @@ class MultiTimer(object):
         except AttributeError:
             return 0
 
+    @property
+    def starttime(self):
+        return self._timer.starttime
 
 
 if __name__ == "__main__":

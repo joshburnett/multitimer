@@ -13,7 +13,7 @@ from setuptools import find_packages, setup, Command
 
 # Package meta-data.
 NAME = 'multitimer'
-DESCRIPTION = 'A periodic timer that can be started multiple times'
+DESCRIPTION = 'A pure-python periodic timer that can be started multiple times'
 EMAIL = 'josh@burnettsonline.org'
 AUTHOR = 'Josh Burnett'
 
@@ -28,8 +28,8 @@ REQUIRED = []
 here = os.path.abspath(os.path.dirname(__file__))
 
 # Import the README and use it as the long-description.
-# Note: this will only work if 'README.rst' is present in your MANIFEST.in file!
-with io.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+# Note: this will only work if 'README.md' is present in your MANIFEST.in file!
+with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = '\n' + f.read()
 
 # Load the package's __version__.py module as a dictionary.
@@ -63,7 +63,7 @@ class PublishCommand(Command):
             pass
 
         self.status('Building Source and Wheel (universal) distribution…')
-        os.system('{0} setup.py sdist bdist_wheel --universal'.format(sys.executable))
+        os.system('{0} setup.py sdist --formats=gztar,zip bdist_wheel --universal'.format(sys.executable))
 
 #        self.status('Uploading the package to PyPi via Twine…')
 #        os.system('twine upload dist/*')
@@ -79,16 +79,11 @@ setup(
     long_description=long_description,
     author=AUTHOR,
     author_email=EMAIL,
-    # packages=find_packages(exclude=('tests',)),
-    # If your package is a single module, use this instead of 'packages':
     py_modules=['multitimer'],
-
-    # entry_points={
-    #     'console_scripts': ['mycli=mymodule:cli'],
-    # },
     install_requires=REQUIRED,
     include_package_data=True,
     license='MIT',
+    keywords='timer',
     classifiers=[
         # Trove classifiers
         # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
@@ -101,6 +96,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy'
     ],
