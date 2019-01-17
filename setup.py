@@ -63,7 +63,7 @@ class PublishCommand(Command):
             pass
 
         self.status('Building Source and Wheel (universal) distribution…')
-        os.system('{0} setup.py sdist --formats=gztar,zip bdist_wheel --universal'.format(sys.executable))
+        os.system('{0} setup.py sdist --formats=zip bdist_wheel --universal'.format(sys.executable))
 
 #        self.status('Uploading the package to PyPi via Twine…')
 #        os.system('twine upload dist/*')
@@ -77,6 +77,7 @@ setup(
     version=about['__version__'],
     description=DESCRIPTION,
     long_description=long_description,
+    long_description_content_type="text/markdown",
     author=AUTHOR,
     author_email=EMAIL,
     py_modules=['multitimer'],
