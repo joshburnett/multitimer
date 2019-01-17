@@ -14,7 +14,7 @@ from setuptools import find_packages, setup, Command
 # Package meta-data.
 NAME = 'multitimer'
 DESCRIPTION = 'A pure-python periodic timer that can be started multiple times'
-EMAIL = 'josh@burnettsonline.org'
+EMAIL = 'josh_github@burnettsonline.org'
 AUTHOR = 'Josh Burnett'
 
 # What packages are required for this module to be executed?
