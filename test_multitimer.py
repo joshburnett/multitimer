@@ -27,6 +27,29 @@ pprint(offsets)
 
 
 #%%
+result = []
+def increment_func():
+    sleep(2)
+    result.append(42)
+    
+rpt = multitimer.MultiTimer(interval=1, function=increment_func, runonstart=True)
+rpt.join()  # Does nothing
+rpt.start()
+
+try:
+    rpt.join() 
+except AssertionError:
+    pass
+else:
+    raise RuntimeError("should have failed")
+    
+rpt.stop()
+assert len(result) == 0
+rpt.join() 
+assert len(result) == 1
+
+
+#%%
 def output_func(output):
     print('{:.3f}: {}'.format(perf_counter()-rpt.starttime, output))
 

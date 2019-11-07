@@ -67,6 +67,9 @@ timer.start()
 time.sleep(5)
 timer.stop()
 
+# and potentially waited for (in case an iteration was in progress)
+timer.join()
+
 
 # If a mutable object is used to specify input parameters, it can be changed after starting the timer
 output = {'foo':"Doin' my job again."}
