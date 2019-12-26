@@ -109,6 +109,7 @@ class MultiTimer(object):
     Start this timer by calling .start().  Once started, calling .stop() will terminate the
     timer's loop and not produce any further calls to function(). Note that if function() is
     currently in the middle of running, it will finish the current iteration and not be interrupted.
+    By calling .join(), one can wait for the timer to finish its task (if any) before proceeding further.
 
     _ontimeout_ and _params_ are deprecated in 0.2, and replaced by _function_, _args_
     and _kwargs_, to match the threading.Timer API.
@@ -159,6 +160,12 @@ class MultiTimer(object):
     def stop(self):
         self._timer.stop()
 
+    def join(self):
+        """Wait for the current task to finish, if any."""
+        assert not self._timer or self._timer.stopevent.is_set(), "timer must be stopped before being joined"
+        if self._timer:
+            self._timer.join()
+        
     @property
     def interval(self):
         return self._interval
