@@ -26,9 +26,9 @@ Start this timer by calling `.start()`.  Once started, calling `.stop()` will te
 timer's loop and not produce any further calls to _function_. Note that if _function_ is
 currently in the middle of running, it will finish the current iteration and not be interrupted.
 
-_ontimeout_ and _params_ are deprecated in 0.2, and replaced by _function_, _args_
-and _kwargs_, to match the `threading.Timer` API.
-    
+_ontimeout_ and _params_ were deprecated in 0.2 and replaced by _function_, _args_
+and _kwargs_ to match the `threading.Timer` API.  _ontimeout_ and _params_ have been removed in 0.3.
+
 Since the underlying mechanism is purely based on python threads & events, the overall processor
 load & memory usage are minimal.  Note that the timing accuracy is typically to within about 10 ms,
 depending on the platform.
@@ -79,6 +79,11 @@ timer.start()
 time.sleep(3.5)
 output['foo'] = "I'd like to be done now."
 
+# Note: While this feature can be useful, be aware that changing arguments while the timer is running may result in some
+# race conditions. multitimer is multithreaded but does not currently have any sort of locking mechanisms in place to
+# ensure that operations are atomic. 
+
+
 # And a MultiTimer can be re-started by just calling start() again
 time.sleep(2)
 output['foo'] = 'Please just let me be...'
@@ -90,16 +95,23 @@ timer.stop()
 Releases
 --------
 
-### 0.1, 2018-02-15
+### 0.3, 2020-11-27
 
-* Initial release
+* Add a .join() method to wait for a timer that has been stopped to complete its final iteration. (Thanks, @pakal!)
+* Remove _ontimeout_ and _params_ arguments (deprecated in 0.2)
+* Properly pass args to RepeatingTimer
+* Fix error if .stop() called before .start()
 
 ### 0.2, 2019-01-17
 
 * Replace time.clock() calls with time.perf_counter(), as [time.clock is deprecated since python 3.3](https://docs.python.org/3/library/time.html#time.clock) and doesn't provide consistent behavior across different platforms.
 * Replace _ontimeout_ with _function_, and _params_ with _args_ and _kwargs_, to match the `threading.Timer` API.
 _ontimeout_ and _params_ are deprecated and will be removed in v0.3.
-* Added lots of code comments to better explain how the module works. 
+* Add lots of code comments to better explain how the module works. 
+
+### 0.1, 2018-02-15
+
+* Initial release
 
 Meta
 ----
